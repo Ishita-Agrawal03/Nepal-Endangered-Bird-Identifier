@@ -1,11 +1,13 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from tensorflow.keras.models import load_model
+import tflite_runtime.interpreter as tflite
 
-# Load model
-model = load_model("bird_model.keras")
+interpreter = tflite.Interpreter(model_path="model.tflite")
+interpreter.allocate_tensors()
 
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 # Load labels
 with open("labels.txt") as f:
     class_names = [line.strip() for line in f.readlines()]
@@ -29,7 +31,9 @@ if uploaded_file is not None:
     img_array = np.expand_dims(img_array, axis=0)
 
     # Predict
-    predictions = model.predict(img_array)[0]
+    interpreter.set_tensor(input_details[0]['index'], img_array.astype(np.float32))
+     interpreter.invoke()
+    predictions = interpreter.get_tensor(output_details[0]['index'])[0]
     top3 = predictions.argsort()[-3:][::-1]
 
     st.subheader("Top Predictions")
